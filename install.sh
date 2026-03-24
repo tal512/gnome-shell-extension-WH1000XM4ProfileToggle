@@ -1,14 +1,7 @@
-echo "1. Create extension directory if it does not exist: ~/.local/share/gnome-shell/extensions/WH1000XM4ProfileToggle"
-mkdir -p ~/.local/share/gnome-shell/extensions/WH1000XM4ProfileToggle
+#!/usr/bin/env bash
 
-echo "2. Copy extension files to extension directory: ~/.local/share/gnome-shell/extensions/WH1000XM4ProfileToggle"
-cp ./* ~/.local/share/gnome-shell/extensions/WH1000XM4ProfileToggle
+bash pack.sh
 
-echo "3. Restart GNOME Shell"
-killall -w -SIGQUIT gnome-shell
-
-echo "4. Enable extension WH1000XM4ProfileToggle"
-gnome-extensions enable WH1000XM4ProfileToggle
-
-echo "DONE"
-
+gnome-extensions install --force WH1000XM4ProfileToggle@tal512.shell-extension.zip && \
+    printf "Extension installed successfully.\nRestart GNOME Shell (Alt+F2, r, Enter) and activate.\n" || \
+    { printf "ERROR: Failed to install extension.\n"; exit 1;}
