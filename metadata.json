@@ -1,13 +1,6 @@
 {
   "name": "WH1000XM4ProfileToggle",
   "description": "Toggle WH1000XM4 card profile",
-  "uuid": "WH1000XM4ProfileToggle",
-  "shell-version": [
-    "3.36",
-    "3.38",
-    "40",
-    "41",
-    "42",
-    "43"
-  ]
+  "uuid": "WH1000XM4ProfileToggle@tal512",
+  "shell-version": ["3.36", "3.38", "40", "41", "42", "43"]
 }
