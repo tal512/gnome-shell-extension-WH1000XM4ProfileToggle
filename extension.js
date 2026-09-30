@@ -11,12 +11,18 @@ const PopupMenu = imports.ui.popupMenu;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 
 class Extension {
-  static get MEETING_MODE() {
+  static get PULSEAUDIO_MEETING_MODE() {
     return "handsfree_head_unit";
   }
-
-  static get QUALITY_MODE() {
+  static get PULSEAUDIO_QUALITY_MODE() {
     return "a2dp_sink";
+  }
+
+  static get PIPEWIRE_MEETING_MODE() {
+    return "headset-head-unit";
+  }
+  static get PIPEWIRE_QUALITY_MODE() {
+    return "a2dp-sink";
   }
 
   static get TOP_BAR_LABEL() {
@@ -103,12 +109,12 @@ class Extension {
 
     this._toggleProfileMenuItem = new PopupMenu.PopupSwitchMenuItem(
       "Meeting mode",
-      false
+      false,
     );
     this._toggleProfileMenuItem.sensitive = false;
     this._toggleProfileMenuItem.connect(
       "button-press-event",
-      this.toggleProfile.bind(this)
+      this.toggleProfile.bind(this),
     );
     this._menu.menu.addMenuItem(this._toggleProfileMenuItem);
     this.setToggleProfileSwitch();
@@ -119,12 +125,12 @@ class Extension {
 
     this._toggleDeviceConnectionMenuItem = new PopupMenu.PopupSwitchMenuItem(
       "Device connected",
-      false
+      false,
     );
     this._toggleDeviceConnectionMenuItem.sensitive = true;
     this._toggleDeviceConnectionMenuItem.connect(
       "button-press-event",
-      this.toggleDeviceConnection.bind(this)
+      this.toggleDeviceConnection.bind(this),
     );
     this._menu.menu.addMenuItem(this._toggleDeviceConnectionMenuItem);
     this.setToggleDeviceConnectionSwitch();
@@ -135,11 +141,16 @@ class Extension {
 
     const activeProfile = this.getActiveProfile();
 
+    const isQualityMode =
+      activeProfile.includes(Extension.PULSEAUDIO_QUALITY_MODE) ||
+      activeProfile.includes(Extension.PIPEWIRE_QUALITY_MODE);
+    const isMeetingMode =
+      activeProfile.includes(Extension.PULSEAUDIO_MEETING_MODE) ||
+      activeProfile.includes(Extension.PIPEWIRE_MEETING_MODE);
+
     if (
-      (activeProfile === Extension.QUALITY_MODE &&
-        this._toggleProfileMenuItem.state === true) ||
-      (activeProfile === Extension.MEETING_MODE &&
-        this._toggleProfileMenuItem.state === false)
+      (isQualityMode && this._toggleProfileMenuItem.state === true) ||
+      (isMeetingMode && this._toggleProfileMenuItem.state === false)
     ) {
       this._toggleProfileMenuItem.toggle();
     }
@@ -181,14 +192,24 @@ class Extension {
     const cardName = this.getCardName();
     const activeProfile = this.getActiveProfile();
 
-    if (activeProfile === Extension.QUALITY_MODE) {
+    if (activeProfile.includes(Extension.PULSEAUDIO_QUALITY_MODE)) {
       GLib.spawn_command_line_sync(
-        `/bin/bash -c "pactl set-card-profile ${cardName} ${Extension.MEETING_MODE}"`
+        `/bin/bash -c "pactl set-card-profile ${cardName} ${Extension.PULSEAUDIO_MEETING_MODE}"`,
+      );
+    } else if (activeProfile.includes(Extension.PIPEWIRE_QUALITY_MODE)) {
+      GLib.spawn_command_line_sync(
+        `/bin/bash -c "pactl set-card-profile ${cardName} ${Extension.PIPEWIRE_MEETING_MODE}"`,
+      );
+    } else if (activeProfile.includes(Extension.PULSEAUDIO_MEETING_MODE)) {
+      GLib.spawn_command_line_sync(
+        `/bin/bash -c "pactl set-card-profile ${cardName} ${Extension.PULSEAUDIO_QUALITY_MODE}"`,
+      );
+    } else if (activeProfile.includes(Extension.PIPEWIRE_MEETING_MODE)) {
+      GLib.spawn_command_line_sync(
+        `/bin/bash -c "pactl set-card-profile ${cardName} ${Extension.PIPEWIRE_QUALITY_MODE}"`,
       );
     } else {
-      GLib.spawn_command_line_sync(
-        `/bin/bash -c "pactl set-card-profile ${cardName} ${Extension.QUALITY_MODE}"`
-      );
+      log(`unknown profile: ${activeProfile}`);
     }
   }
 
@@ -201,10 +222,16 @@ class Extension {
 
     const activeProfile = this.getActiveProfile();
 
-    if (activeProfile === Extension.QUALITY_MODE) {
+    if (
+      activeProfile.includes(Extension.PULSEAUDIO_QUALITY_MODE) ||
+      activeProfile.includes(Extension.PIPEWIRE_QUALITY_MODE)
+    ) {
       this._menuIcon.set_gicon(this._giconQuality);
       this._toggleProfileMenuItem.sensitive = true;
-    } else if (activeProfile === Extension.MEETING_MODE) {
+    } else if (
+      activeProfile.includes(Extension.PULSEAUDIO_MEETING_MODE) ||
+      activeProfile.includes(Extension.PIPEWIRE_MEETING_MODE)
+    ) {
       this._menuIcon.set_gicon(this._giconMeeting);
       this._toggleProfileMenuItem.sensitive = true;
     } else {
@@ -218,28 +245,28 @@ class Extension {
 
   getMacAddress() {
     const output = GLib.spawn_command_line_sync(
-      "/bin/bash -c \"bluetoothctl devices | awk -F ' ' '/WH-1000XM4/ { print $2 }'\""
+      "/bin/bash -c \"bluetoothctl devices | awk -F ' ' '/WH-1000XM4/ { print $2 }'\"",
     )[1];
     return ByteArray.toString(output).trim();
   }
 
   isConnected(macAddress) {
     const output = GLib.spawn_command_line_sync(
-      `/bin/bash -c "bluetoothctl info ${macAddress} | awk -F': ' '/Connected/ { print $2 }'"`
+      `/bin/bash -c "bluetoothctl info ${macAddress} | awk -F': ' '/Connected/ { print $2 }'"`,
     )[1];
     return ByteArray.toString(output).trim() === "yes" ? true : false;
   }
 
   getActiveProfile() {
     const output = GLib.spawn_command_line_sync(
-      "/bin/bash -c \"pactl list cards | awk -v RS='' '/bluez/' | awk -F': ' '/Active Profile/ { print $2 }'\""
+      "/bin/bash -c \"pactl list cards | awk -v RS='' '/bluez/' | awk -F': ' '/Active Profile/ { print $2 }'\"",
     )[1];
     return ByteArray.toString(output).trim();
   }
 
   getCardName() {
     const output = GLib.spawn_command_line_sync(
-      "/bin/bash -c \"pactl list cards | awk -v RS='' '/bluez/' | awk -F': ' '/Name/ { print $2 }'\""
+      "/bin/bash -c \"pactl list cards | awk -v RS='' '/bluez/' | awk -F': ' '/Name/ { print $2 }'\"",
     )[1];
     return ByteArray.toString(output).trim();
   }
